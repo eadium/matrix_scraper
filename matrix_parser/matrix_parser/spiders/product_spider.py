@@ -3,7 +3,7 @@ import psycopg2
 
 def init_bd(cursor):
     cursor.execute("""
-    
+    drop table if exists products_extended;
     CREATE TABLE IF NOT EXISTS products_extended(
         barcode bigint primary key,
         name text,
@@ -197,8 +197,6 @@ class ProdSetSpider(scrapy.Spider):
 
     def parse(self, response):
         init_bd(self.cursor)
-        print(self.conn)
-        print(self.cursor.execute("select * from products_extended;"))
         i = 2
         while True:
             # print('parsing category {}'.format(i))
