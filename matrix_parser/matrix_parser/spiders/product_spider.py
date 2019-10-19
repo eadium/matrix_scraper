@@ -197,22 +197,18 @@ class ProdSetSpider(scrapy.Spider):
 
     def parse(self, response):
         init_bd(self.cursor)
+        # i_file = open('i.txt', 'a+')
         i = 2
         while True:
+            # i_file.write(str(i)+'\n')
             # print('parsing category {}'.format(i))
             category_link = response.xpath("//*[@id='ctl00_ContentPH_GroupsDG_ctl{:02d}_Group']/@href".format(i)).get()
-            category_text = response.xpath("//*[@id='ctl00_ContentPH_GroupsDG_ctl{:02d}_Group']/text()".format(i)).get()
             
             if category_link == None:
                 break
             if "http" not in category_link:
                 category_link = "http://www.goodsmatrix.ru/{}".format(category_link)
-                category_en, subcategory_en = 'NULL', 'NULL'
-            else:
-                try:
-                    category_en, subcategory_en = category_link.replace('http://www.goodsmatrix.ru/map/', '').replace('.html', '').split('/')
-                except:
-                    pass
+            
             i += 1
             yield scrapy.Request(category_link, callback=self.parse_category)
-
+        # i_file.close()
