@@ -1,0 +1,1 @@
+echo > ingredients.csv; echo > database.csv; scrapy runspider scraper.py 
