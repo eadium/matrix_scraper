@@ -9,7 +9,7 @@ def init_bd(cursor):
         name text,
         description text,
         contents text,
-        category text,
+        category_url text,
         mass text,
         bestbefore text,
         nutrition text,
@@ -48,10 +48,11 @@ class Product:
             self.best_before = ' '.join(self.best_before.split())
         if self.nutrition is not None:
             self.nutrition = ' '.join(self.nutrition.split())
-        if self.category is not None:
-            self.category = ' '.join(self.category.split())
+        if self.category_url is not None:
+            self.category_url = ' '.join(self.category_url.split())
         if self.manufacturer is not None:
             self.manufacturer = ' '.join(self.manufacturer.split())
+
 
         for ing in self.ingredients:
             ing['name'] = ' '.join(ing['name'].split())
@@ -75,7 +76,7 @@ class Product:
             self.name,
             self.description,
             self.contents,
-            self.category,
+            self.category_url,
             self.mass,
             self.best_before,
             self.nutrition,
@@ -102,7 +103,7 @@ class Product:
     def save_bd(self, cursor):
         cursor.execute("""
         INSERT INTO products_extended(barcode, name, description,
-            contents, category, mass, bestbefore, nutrition,
+            contents, category_url, mass, bestbefore, nutrition,
             manufacturer, image) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
             ON CONFLICT DO NOTHING;
         """, (
@@ -110,7 +111,7 @@ class Product:
             self.name,
             self.description,
             self.contents,
-            self.category,
+            self.category_url,
             self.mass,
             self.best_before,
             self.nutrition,
@@ -147,7 +148,7 @@ class ProdSetSpider(scrapy.Spider):
         prod.mass = response.xpath("//*[@id='ctl00_ContentPH_Net']/text()").get()
         prod.nutrition = response.xpath("//*[@id='ctl00_ContentPH_ESL']/text()").get()
         prod.best_before = response.xpath("//*[@id='ctl00_ContentPH_KeepingTime']/text()").get()
-        prod.category = response.meta.get('category')
+        prod.category_url = response.meta.get('category_url')
         prod.manufacturer = response.meta.get('manufacturer')
 
         i = 0
@@ -172,21 +173,26 @@ class ProdSetSpider(scrapy.Spider):
 
     def parse_category(self, response):
         i = 3
+        category_url = ''
+        categories = response.xpath("//*[@id='ctl00_ContentPH_GroupPath_GroupName']/a/text()").getall()
+        for cat in categories:
+            category_url += ' '.join(cat.split()) + '/'
+        category_url = category_url[:-1]
+        category_url = ' '.join(category_url.split())
+
         while True:
             # print('parsing category {}'.format(i))
             barcode = response.xpath("//*[@id='ctl00_ContentPH_GoodsDG_ctl{:02d}_A2']/text()".format(i)).get()
-            category = response.xpath("//*[@id='ctl00_ContentPH_GoodsDG_ctl{:02d}_A3']/text()".format(i)).get()
             manufacturer = response.xpath("//*[@id='ctl00_ContentPH_GoodsDG_ctl{:02d}_A4']/text()".format(i)).get()
+            
             if barcode == None:
                 break
             barcode = ' '.join(barcode.split())
-            category = ' '.join(category.split())
             manufacturer = ' '.join(manufacturer.split())
             product_link = "http://www.goodsmatrix.ru/goods/{}.html".format(barcode)
             i += 1
             yield scrapy.Request(product_link, callback=self.parse_product, meta={
-                'category': category,
-                'manufacturer': manufacturer
+                'category_url': category_url
                 })
 
     def parse(self, response):
@@ -197,10 +203,18 @@ class ProdSetSpider(scrapy.Spider):
         while True:
             # print('parsing category {}'.format(i))
             category_link = response.xpath("//*[@id='ctl00_ContentPH_GroupsDG_ctl{:02d}_Group']/@href".format(i)).get()
+            category_text = response.xpath("//*[@id='ctl00_ContentPH_GroupsDG_ctl{:02d}_Group']/text()".format(i)).get()
+            
             if category_link == None:
                 break
             if "http" not in category_link:
                 category_link = "http://www.goodsmatrix.ru/{}".format(category_link)
+                category_en, subcategory_en = 'NULL', 'NULL'
+            else:
+                try:
+                    category_en, subcategory_en = category_link.replace('http://www.goodsmatrix.ru/map/', '').replace('.html', '').split('/')
+                except:
+                    pass
             i += 1
             yield scrapy.Request(category_link, callback=self.parse_category)
 
