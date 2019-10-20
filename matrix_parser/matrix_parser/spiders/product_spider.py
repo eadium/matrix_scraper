@@ -3,7 +3,6 @@ import psycopg2
 
 def init_bd(cursor):
     cursor.execute("""
-    drop table if exists products_extended;
     CREATE TABLE IF NOT EXISTS products_extended(
         barcode bigint primary key,
         name text,
